@@ -3,19 +3,27 @@ from keras.layers import Input, Dense, Reshape, Flatten
 from keras.layers import BatchNormalization
 from tensorflow.keras.layers import LeakyReLU
 from keras.models import Sequential, Model
-from keras.optimizers import Adam
+from tensorflow.keras.optimizers.legacy import Adam
 import matplotlib.pyplot as plt
 import numpy as np
 
+
+#Define input image dimensions
+#Large images take too much time and resources.
 img_rows = 28
 img_cols = 28
 channels = 1
 img_shape = (img_rows, img_cols, channels)
 
+##########################################################################
+#Given input of noise (latent) vector, the Generator produces an image.
 def build_generator():
 
     noise_shape = (100,) #1D array of size 100 (latent vector / noise)
-      
+
+#Define your generator network 
+#Here we are only using Dense layers. But network can be complicated based
+#on the application. For example, you can use VGG for super res. GAN.         
 
     model = Sequential()
 
@@ -42,6 +50,7 @@ def build_generator():
 #Alpha — α is a hyperparameter which controls the underlying value to which the
 #function saturates negatives network inputs.
 #Momentum — Speed up the training
+##########################################################################
 
 #Given an input image, the Discriminator outputs the likelihood of the image being real.
     #Binary classification - true or false (we're calling it validity)
@@ -88,7 +97,7 @@ def train(epochs, batch_size=128, save_interval=50):
         
         d_loss = 0.5 * np.add(d_loss_real,d_loss_fake)
         
-        noise = np.random.normal(0,1,(half_batch, 100))
+        noise = np.random.normal(0,1,(batch_size, 100))
         
         valid_y = np.array([1]*batch_size)
         
@@ -106,7 +115,7 @@ def save_imgs(epoch):
     
     gen_imgs = 0.5*gen_imgs + 0.5
     
-    fig,axs = plt.subplot(r, c)
+    fig,axs = plt.subplots(r, c)
     cnt = 0
     for i in range(r):
         for j in range(c):
@@ -114,7 +123,7 @@ def save_imgs(epoch):
             axs[i,j].axis('off')
             cnt += 1
     fig.savefig(r"E:\Workspace\Generative AI\GAN\images\mnist_%d.png" % epoch)
-    plt.cloase()
+    plt.close()
     
 
 optimizer = Adam(0.0002,0.5)
@@ -137,8 +146,7 @@ combined = Model(z,valid)
 combined.compile(loss = 'binary_crossentropy', optimizer=optimizer)
 
 
-train(epochs=100,batch_size=32, save_interval=10)
+train(epochs=100000,batch_size=32, save_interval=100)
 
-generator.save(r'E:\Workspace\Generative AI\GAN\generator_model.h5')
-        
+generator.save(r'E:\Workspace\Generative AI\GAN\generator_model_100k.h5')
         
