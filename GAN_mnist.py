@@ -106,11 +106,10 @@ def train(epochs, batch_size=128, save_interval=50):
         print ("%d [D loss: %f, acc.: %.2f%%] [G loss: %f]" % (epoch, d_loss[0], 100*d_loss[1], g_loss))
         
         if epoch % save_interval == 0:
-            save_imgs(epoch)
+            save_imgs(epoch, fixed_noise)
             
-def save_imgs(epoch):
+def save_imgs(epoch,noise):
     r,c = 5,5
-    noise = np.random.normal(0,1,(r*c,100))
     gen_imgs = generator.predict(noise)
     
     gen_imgs = 0.5*gen_imgs + 0.5
@@ -125,7 +124,7 @@ def save_imgs(epoch):
     fig.savefig(r"E:\Workspace\Generative AI\GAN\images\mnist_%d.png" % epoch)
     plt.close()
     
-
+fixed_noise = np.random.normal(0, 1, (25, 100)) 
 optimizer = Adam(0.0002,0.5)
 
 discriminator= build_discriminator()
@@ -146,7 +145,6 @@ combined = Model(z,valid)
 combined.compile(loss = 'binary_crossentropy', optimizer=optimizer)
 
 
-train(epochs=100000,batch_size=32, save_interval=100)
+train(epochs=5000,batch_size=32, save_interval=100)
 
 generator.save(r'E:\Workspace\Generative AI\GAN\generator_model_100k.h5')
-        
