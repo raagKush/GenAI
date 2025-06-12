@@ -1,11 +1,12 @@
 from keras.datasets import mnist
 from keras.layers import Input, Dense, Reshape, Flatten
-from keras.layers import BatchNormalization,Embedding,multiply,Concatenate
+from keras.layers import BatchNormalization,Embedding,multiply
 from tensorflow.keras.layers import LeakyReLU
 from keras.models import Sequential, Model
 from tensorflow.keras.optimizers.legacy import Adam
 import matplotlib.pyplot as plt
 import numpy as np
+import os,glob
 
 
 #Define input image dimensions
@@ -16,6 +17,17 @@ channels = 1
 img_shape = (img_rows, img_cols, channels)
 num_classes= 10
 latent_dim = 100
+
+config = {
+     "save_image_path" : r"E:\Workspace\Generative AI\Conditional_GAN\mnist\images",
+     "checkpoint_path" : r"E:\Workspace\Generative AI\Conditional_GAN\mnist\checkpoints"
+ }
+
+save_image_path = config["save_image_path"]
+checkpoint_path = config["checkpoint_path"]
+
+
+
 ##########################################################################
 #Given input of noise (latent) vector, the Generator produces an image.
 def build_generator():
@@ -81,7 +93,7 @@ def build_discriminator():
 
     return Model([img,label], validity)
 
-def train(epochs, batch_size=128, save_interval=50):
+def train(epochs, batch_size=128, image_interval=50, checkpoint_interval = 100):
 
     # Load the dataset
     (X_train, y_tain), (_, _) = mnist.load_data()
@@ -94,7 +106,7 @@ def train(epochs, batch_size=128, save_interval=50):
 
     half_batch = int(batch_size / 2)
 
-    for epoch in range(epochs):
+    for epoch in range(start_epoch,epochs):
 
         idx = np.random.randint(0, X_train.shape[0], half_batch)
         imgs,labels = X_train[idx],y_tain[idx]
@@ -117,8 +129,15 @@ def train(epochs, batch_size=128, save_interval=50):
         
         print ("%d [D loss: %f, acc.: %.2f%%] [G loss: %f]" % (epoch, d_loss[0], 100*d_loss[1], g_loss))
         
-        if epoch % save_interval == 0:
+        if epoch % image_interval == 0:
             save_imgs(epoch)
+        
+        if epoch % checkpoint_interval == 0:
+            gen_path = os.path.join(checkpoint_path,f"generator_epoch_{epoch}.h5")
+            disc_path = os.path.join(checkpoint_path,f"discriminator_epoch_{epoch}.h5")
+            generator.save_weights(gen_path)
+            discriminator.save_weights(disc_path)
+            print(f"Checkpoint save for epoch: {epoch}")
             
 def save_imgs(epoch):
     r,c = 2,5
@@ -138,9 +157,28 @@ def save_imgs(epoch):
             axs[i,j].set_title(f"Digit: {sampled_labels[cnt]}")
             axs[i,j].axis('off')
             cnt += 1
-    fig.savefig(r"E:\Workspace\Generative AI\Conditional_GAN\mnist\images\mnist_%d.png" % epoch)
+    fig.savefig(os.path.join(save_image_path, "mnist_%d.png") % epoch)
     plt.close()
     
+def find_latest_scheckpoint(model_name):
+    pattern = os.path.join(checkpoint_path, f"{model_name}_epoch_*.h5")
+    files = sorted(glob.glob(pattern))
+    if not files:
+        return None,0
+    latest = files[-1]                          # e.g. ".../generator_epoch_120.h5"
+    basename = os.path.basename(latest)         # "generator_epoch_120.h5"
+    name_only, _ = os.path.splitext(basename)  # "generator_epoch_120"
+    parts = name_only.split("_")                # ["generator", "epoch", "120"]
+    epoch = int(parts[-1])
+    return latest,epoch
+
+
+    
+os.makedirs(checkpoint_path,exist_ok=True)
+gen_chkpt,gen_start = find_latest_scheckpoint("generator")
+disc_chkpt,disc_start = find_latest_scheckpoint("discriminator")
+start_epoch = max(gen_start,disc_start)
+
 optimizer = Adam(0.0002,0.5)
 
 discriminator= build_discriminator()
@@ -149,6 +187,14 @@ discriminator.compile(loss = 'binary_crossentropy', optimizer=optimizer,
 
 generator = build_generator()
 generator.compile(loss = 'binary_crossentropy', optimizer=optimizer)
+
+if gen_chkpt:
+    print("Loading generator weights")
+    generator.load_weights(gen_chkpt)
+    
+if disc_chkpt:
+    print("Loading discriminator weights")
+    discriminator.load_weights(disc_chkpt)
 
 z= Input(shape=(latent_dim,))
 label = Input(shape=(1,))
@@ -162,8 +208,6 @@ combined = Model([z,label],valid)
 combined.compile(loss = 'binary_crossentropy', optimizer=optimizer)
 
 
-train(epochs=500,batch_size=32, save_interval=10)
+train(epochs=5000,batch_size=32, image_interval=100, checkpoint_interval= 400)
 
-generator.save(r'E:\Workspace\Generative AI\Conditional_GAN\mnist\generator_conditional_500.h5')
-        
-        
+generator.save(r'E:\Workspace\Generative AI\Conditional_GAN\mnist\generator_conditional_5000.h5')
