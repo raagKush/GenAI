@@ -211,3 +211,10 @@ combined.compile(loss = 'binary_crossentropy', optimizer=optimizer)
 train(epochs=5000,batch_size=32, image_interval=100, checkpoint_interval= 400)
 
 generator.save(r'E:\Workspace\Generative AI\Conditional_GAN\mnist\generator_conditional_5000.h5')
+
+''' Predict by label'''
+
+noise_for_predict = np.random.normal(0,1,size=(1,latent_dim))
+label_for_predict = np.array([[7]])
+generated_img = generator.predict([noise_for_predict,label_for_predict])
+plt.imshow(generated_img[0,:,:,0],cmap = 'gray')
