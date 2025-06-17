@@ -104,7 +104,9 @@ def train_gan(generator,discriminator,gan_model,dataset,latent_dim=100,epochs=50
             X_gan = generate_latent_points(latent_dim,batch_size)
             y_gan = np.ones((batch_size,1))
             
-            g_loss = generator.train_on_batch(X_gan,y_gan)
+            g_loss = gan_model.train_on_batch(X_gan,y_gan)
+            
+            print("Epoch: {}, Batch: {}/{}, g_loss = {}, d_loss = {}".format(i+1,j+1,batch_per_epoch,g_loss,(d_loss_real+d_loss_fake)/2))
             
     generator.save(r'C:\WORKSPACE\Test\GAN\cifar10\generator_model.h5')
        
@@ -114,7 +116,4 @@ generator = define_generator(latent_dim)
 gan_model = define_gan(generator,discriminator)
 dataset = load_normalize_real_data()
 
-train_gan(generator,discriminator,gan_model,dataset,latent_dim,epochs=5,batch_size=128)
-
-    
-    
+train_gan(generator,discriminator,gan_model,dataset,latent_dim,epochs=50,batch_size=128)
