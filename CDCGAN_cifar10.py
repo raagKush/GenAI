@@ -1,4 +1,4 @@
-from tensorflow.keras.models import Sequential,Model
+from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Dense, Flatten, Conv2D, Conv2DTranspose, Reshape, Embedding, Input, Concatenate, Dropout
 from tensorflow.keras.layers import LeakyReLU
 from tensorflow.keras.optimizers.legacy import Adam
@@ -33,14 +33,10 @@ def define_discriminator(input_size=input_size,num_classes=10):
     
     
     opt = Adam(learning_rate=0.002,beta_1=0.5)
-    model.compile(optimizer=opt,loss='binary_crossentropy',metrics=['acccuracy'])
+    model.compile(optimizer=opt,loss='binary_crossentropy',metrics=['accuracy'])
     model.summary()
     
     return model
-
-def generate_latent_points(latent_dim,n_samples):
-    noise = np.random.randn(n_samples,latent_dim)
-    return noise
     
 def define_generator(latent_dim=100, num_classes = 10):
     
@@ -78,25 +74,72 @@ def define_gan(discriminator,generator):
     discriminator.trainable = False
     
     gen_noise,gen_labels = generator.input #input of generator model i.e. in_latent_vector,in_label
-    gen_output = generator.output #output image
+    gen_output = generator.output #output image produced by generator
     
-
-    return
+    gan_output = discriminator([gen_output,gen_labels]) #image with label sent to discriminator to tell if it's real or fake
+    
+    model = Model([gen_noise,gen_labels],gan_output)
+    
+    opt = Adam(learning_rate=0.002, beta_1=0.5)
+    
+    model.compile(loss='binary_crossentropy', optimizer=opt)
+    
+    return model
 
 def load_normalize_data():
-    (X_train,Y_train),(_,_) = cifar10.load_dataset()
+    (X_train,Y_train),(_,_) = cifar10.load_data()
     X=X_train.astype('float32')
     X = (X-127.5)/127.5
     
-    return X,Y_train
+    return [X,Y_train]
 
 def generate_real_samples(dataset,n_samples):
-    idx = np.random.randint(0,dataset.shape[0],size=n_samples)
-    X_real,Y_real = dataset[idx]
+    idx = np.random.randint(0,dataset[0].shape[0],size=n_samples)
+    X_real = dataset[0][idx]
+    Y_real = dataset[1][idx]
     
     return X_real,Y_real
 
-def generate_fake_sample(genetator,latent_dim,n_samples):
-    X_fake_input,_Y_fake_input = generate_latent_points(latent_dim, n_samples)
-    X_fake = 
+def generate_latent_points(latent_dim,n_samples,n_classes=10):
+    noise = np.random.randn(n_samples,latent_dim)
+    labels = np.random.randint(0,n_classes,n_samples,)
+    return noise,labels
+
+def generate_fake_sample(generator, latent_dim, n_samples):
+    input_noise,label_fake = generate_latent_points(latent_dim, n_samples)
     
+    X_fake = generator.predict([input_noise,label_fake])
+    
+    return X_fake,label_fake
+    
+
+def train(discriminator,generator, gan_model, dataset, latent_dim, batch_size, epochs):
+    half_batch = int(batch_size/2)
+    batch_per_epoch = int(dataset[0].shape[0]/batch_size) #An epoch is one full pass through the entire training dataset.
+                                            #If you have 10,000 images and use batch_size=64, then:
+                                            #Number of batches per epoch = 10,000 / 64 ≈ 157 updates.
+                                            
+    for i in range(epochs):
+        for j in range(batch_per_epoch):
+            
+            X_real,y_real = generate_real_samples(dataset, half_batch)
+            d_loss_real = discriminator.train_on_batch([X_real,y_real],np.ones((half_batch,1)))
+            
+            X_fake,y_fake = generate_fake_sample(generator, latent_dim, half_batch)
+            d_loss_fake = discriminator.train_on_batch([X_fake,y_fake],np.zeros((half_batch,1)))
+            
+            gan_input, gan_label = generate_latent_points(latent_dim, batch_size)
+            gan_loss = gan_model.train_on_batch([gan_input, gan_label],np.zeros((batch_size,1)))
+            
+            print("Epoch:{}/{} Batch{}/{}, d_loss_real:{}, d_loss_fake:{}, gan_loss:{}".format(i,epochs,j,batch_per_epoch,d_loss_real,d_loss_fake,gan_loss))
+            
+    gan_model.save(r'E:\Workspace\Generative AI\Conditional_GAN\cifar10\generator_conditional.h5')
+    
+latent_dim = 100
+num_classes = 10
+dataset = load_normalize_data()
+discriminator = define_discriminator(input_size=(32,32,3),num_classes=num_classes)
+generator = define_generator(latent_dim,num_classes)
+gan_model = define_gan(discriminator, generator)
+
+train(discriminator, generator, gan_model, dataset, latent_dim, 128, 5)
