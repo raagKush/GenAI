@@ -142,4 +142,6 @@ discriminator = define_discriminator(input_size=(32,32,3),num_classes=num_classe
 generator = define_generator(latent_dim,num_classes)
 gan_model = define_gan(discriminator, generator)
 
-train(discriminator, generator, gan_model, dataset, latent_dim, 128, 5)
+train(discriminator, generator, gan_model, dataset, latent_dim, 128, 50)
+
+#works with GPU
