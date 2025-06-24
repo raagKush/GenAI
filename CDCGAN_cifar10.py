@@ -3,7 +3,10 @@ from tensorflow.keras.layers import Dense, Flatten, Conv2D, Conv2DTranspose, Res
 from tensorflow.keras.layers import LeakyReLU
 from tensorflow.keras.optimizers.legacy import Adam
 from tensorflow.keras.datasets import cifar10
+import tensorflow
 import numpy as np
+from tensorflow.keras.utils import plot_model
+from IPython.display import display
 
 input_size = (32,32,3)
 def define_discriminator(input_size=input_size,num_classes=10):
@@ -35,7 +38,8 @@ def define_discriminator(input_size=input_size,num_classes=10):
     opt = Adam(learning_rate=0.002,beta_1=0.5)
     model.compile(optimizer=opt,loss='binary_crossentropy',metrics=['accuracy'])
     model.summary()
-    
+    model_plot = plot_model(model,show_shapes = True)
+    display(model_plot)
     return model
     
 def define_generator(latent_dim=100, num_classes = 10):
@@ -83,7 +87,8 @@ def define_gan(discriminator,generator):
     opt = Adam(learning_rate=0.002, beta_1=0.5)
     
     model.compile(loss='binary_crossentropy', optimizer=opt)
-    
+    model_plot = plot_model(model,show_shapes = True)
+    display(model_plot)
     return model
 
 def load_normalize_data():
@@ -131,7 +136,7 @@ def train(discriminator,generator, gan_model, dataset, latent_dim, batch_size, e
             gan_input, gan_label = generate_latent_points(latent_dim, batch_size)
             gan_loss = gan_model.train_on_batch([gan_input, gan_label],np.zeros((batch_size,1)))
             
-            print("Epoch:{}/{} Batch{}/{}, d_loss_real:{}, d_loss_fake:{}, gan_loss:{}".format(i,epochs,j,batch_per_epoch,d_loss_real,d_loss_fake,gan_loss))
+            print("Epoch:{}/{} Batch{}/{}, d_loss_real:{}, d_loss_fake:{}, gan_loss:{}".format(i+1,epochs,j+1,batch_per_epoch,d_loss_real,d_loss_fake,gan_loss))
             
     gan_model.save(r'E:\Workspace\Generative AI\Conditional_GAN\cifar10\generator_conditional.h5')
     
@@ -141,7 +146,5 @@ dataset = load_normalize_data()
 discriminator = define_discriminator(input_size=(32,32,3),num_classes=num_classes)
 generator = define_generator(latent_dim,num_classes)
 gan_model = define_gan(discriminator, generator)
-
-train(discriminator, generator, gan_model, dataset, latent_dim, 128, 50)
-
-#works with GPU
+tensorflow.debugging.set_log_device_placement(True)
+train(discriminator, generator, gan_model, dataset, latent_dim, 256, 5)
