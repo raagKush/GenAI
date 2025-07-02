@@ -73,3 +73,43 @@ def define_decoder_block(layer_in,skip_in,num_filters,dropout=True):
     
     return dec
 
+def define_generator(image_shape=(256,256,3)):
+    
+    init = RandomNormal(stddev=0.02)
+    
+    in_image = Input(shape=image_shape)
+    
+    #encoder
+    
+    e1 = define_encoder_block(in_image,64,batchNorm=False)
+    e2 = define_encoder_block(e1,128)
+    e3 = define_encoder_block(e2,256)
+    e4 = define_encoder_block(e3,512)
+    e5 = define_encoder_block(e4,512)
+    e6 = define_encoder_block(e5,512)
+    e7 = define_encoder_block(e6,512)
+    
+    #bottleneck, without batchnorm and WITH relu instead of leakyrelu
+    
+    b = Conv2D(512,(4,4),padding='same',kernel_initializer=init)(e7)
+    b = Activation('relu')(b)
+    
+    #decoder
+    
+    d1 = define_decoder_block(b,e7,512)
+    d2 = define_decoder_block(d1,e6,512)
+    d3 = define_decoder_block(d2,e5,512)
+    d4 = define_decoder_block(d3,e4,512,dropout=False)
+    d5 = define_decoder_block(d4,e3,256,dropout=False)
+    d6 = define_decoder_block(d5,e2,128,dropout=False)
+    d7 = define_decoder_block(d6,e1,64,dropout=False)
+    
+    #output
+    
+    g = Conv2DTranspose(image_shape[2],(4,4),padding='same',kernel_initializer=init)(d7)
+    
+    out_image= Activation('tanh')(g)
+    
+    model = Model(in_image,out_image)
+    
+    return model
