@@ -47,4 +47,29 @@ def define_discriminator(image_shape): #C64-C128-C256-C512
     model.summary()
     return model
 
-disc = define_discriminator((256,256,3))
+#disc = define_discriminator((256,256,3))
+
+def define_encoder_block(layer_in,num_filters, batchNorm = 'True'):
+    
+    init = RandomNormal(stddev=0.2)
+    
+    enc = Conv2D(num_filters,(4,4),strides=(2,2),padding ='same',kernel_initializer=init)(layer_in)
+    if batchNorm:
+        enc = BatchNormalization()(enc,training=True)
+    enc = LeakyReLU(alpha=0.2)(enc)
+    
+    return enc
+    
+def define_decoder_block(layer_in,skip_in,num_filters,dropout=True):
+    
+    init = RandomNormal(stddev=0.2)
+    
+    dec = Conv2DTranspose(num_filters,(4,4),strides=(2,2),padding='same',kernel_initializer=init)(layer_in)
+    dec = BatchNormalization()(dec,training=True)
+    if dropout:
+        dec = Dropout(0.5)(dec, training=True)
+    dec = Concatenate()([dec,skip_in])
+    dec = Activation('relu')(dec)
+    
+    return dec
+
